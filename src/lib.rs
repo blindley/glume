@@ -1,4 +1,5 @@
 mod keys;
+pub mod gl_utils;
 
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::WindowBuilder;
