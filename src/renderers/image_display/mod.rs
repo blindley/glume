@@ -139,24 +139,20 @@ impl ImageDisplay {
         Ok(())
     }
 
-pub fn set_texture(&mut self, texture: Rc<Texture>) {
-    let tex = texture.texture;
-    self.texture = Some(texture);
-    unsafe {
-        gl::UseProgram(self.program);
-        gl::BindTexture(gl::TEXTURE_2D, tex);
-    }
-}
-
     pub fn render(&self) {
-        if self.texture.is_none() {
-            return;
+        if let Some(texture) = self.texture.as_ref() {
+            let texture = texture.texture;
+            
+            unsafe {
+                gl::UseProgram(self.program);
+                gl::BindTexture(gl::TEXTURE_2D, texture);
+                gl::BindVertexArray(self.vao);
+                gl::DrawArrays(gl::TRIANGLE_FAN, 0, 4);
+            }
         }
+    }
 
-        unsafe {
-            gl::UseProgram(self.program);
-            gl::BindVertexArray(self.vao);
-            gl::DrawArrays(gl::TRIANGLE_FAN, 0, 4);
-        }
+    pub fn set_texture(&mut self, texture: Option<Rc<Texture>>) {
+        self.texture = texture;
     }
 }
