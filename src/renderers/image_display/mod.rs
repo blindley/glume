@@ -1,4 +1,5 @@
 
+use std::rc::Rc;
 use crate::gl_utils::{compile_shader, link_shader_program, create_buffer_f32};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -72,6 +73,7 @@ pub struct ImageDisplay {
     program: u32,
     vao: u32,
     vbo: u32,
+    texture: Option<Rc<Texture>>,
 }
 
 
@@ -81,6 +83,7 @@ impl ImageDisplay {
             program: 0,
             vao: 0,
             vbo: 0,
+            texture: None,
         }
     }
 
@@ -96,13 +99,20 @@ impl ImageDisplay {
         let program = link_shader_program(shaders)?;
 
         let vertices: &[f32] = &[
-            -1.0, 1.0, 0.0, 0.0,
-            1.0, 1.0, 1.0, 0.0,
-            1.0, -1.0, 1.0, 1.0,
-            -1.0, -1.0, 0.0, 1.0,
+            // positions
+            -1.0, 1.0,
+            1.0, 1.0,
+            1.0, -1.0,
+            -1.0, -1.0,
+
+            // texture coords
+            0.0, 0.0,
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0,
         ];
 
-        let vbo = create_buffer_f32(vertices, gl::STATIC_DRAW)?;
+        let vbo = create_buffer_f32(vertices, gl::DYNAMIC_DRAW)?;
 
         let mut vao = 0;
         unsafe {
@@ -111,13 +121,13 @@ impl ImageDisplay {
 
             gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
 
-            let stride = 4 * std::mem::size_of::<f32>() as i32;
+            let stride = 0;
 
             let offset = 0 as *const _;
             gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, stride, offset);
             gl::EnableVertexAttribArray(0);
 
-            let offset = (2 * std::mem::size_of::<f32>()) as *const _;
+            let offset = (8 * std::mem::size_of::<f32>()) as *const _;
             gl::VertexAttribPointer(1, 2, gl::FLOAT, gl::FALSE, stride, offset);
             gl::EnableVertexAttribArray(1);
         }
@@ -129,10 +139,22 @@ impl ImageDisplay {
         Ok(())
     }
 
-    pub fn render(&self, texture: &Texture) {
+pub fn set_texture(&mut self, texture: Rc<Texture>) {
+    let tex = texture.texture;
+    self.texture = Some(texture);
+    unsafe {
+        gl::UseProgram(self.program);
+        gl::BindTexture(gl::TEXTURE_2D, tex);
+    }
+}
+
+    pub fn render(&self) {
+        if self.texture.is_none() {
+            return;
+        }
+
         unsafe {
             gl::UseProgram(self.program);
-            gl::BindTexture(gl::TEXTURE_2D, texture.texture);
             gl::BindVertexArray(self.vao);
             gl::DrawArrays(gl::TRIANGLE_FAN, 0, 4);
         }
