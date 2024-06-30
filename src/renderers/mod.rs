@@ -1,1 +1,1 @@
-pub mod image_display;
+pub mod image_renderer;

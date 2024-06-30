@@ -69,7 +69,7 @@ impl Drop for Texture {
     }
 }
 
-pub struct ImageDisplay {
+pub struct ImageRenderer {
     program: u32,
     vao: u32,
     vbo: u32,
@@ -77,7 +77,7 @@ pub struct ImageDisplay {
 }
 
 
-impl ImageDisplay {
+impl ImageRenderer {
     pub fn new() -> Self {
         Self {
             program: 0,
@@ -88,8 +88,8 @@ impl ImageDisplay {
     }
 
     pub fn init(&mut self) -> Result<(), String> {
-        let vcode = include_str!("shaders/image_display_vert.glsl");
-        let fcode = include_str!("shaders/image_display_frag.glsl");
+        let vcode = include_str!("shaders/vertex_shader.glsl");
+        let fcode = include_str!("shaders/fragment_shader.glsl");
 
         let vshader = compile_shader(vcode, gl::VERTEX_SHADER)?;
         let fshader = compile_shader(fcode, gl::FRAGMENT_SHADER)?;
@@ -154,5 +154,28 @@ impl ImageDisplay {
 
     pub fn set_texture(&mut self, texture: Option<Rc<Texture>>) {
         self.texture = texture;
+    }
+
+    pub fn set_render_quad(&mut self, vertices: &[f32]) {
+        if vertices.len() != 8 {
+            panic!("Invalid number of vertices");
+        }
+
+        unsafe {
+            gl::BindBuffer(gl::ARRAY_BUFFER, self.vbo);
+            gl::BufferSubData(gl::ARRAY_BUFFER, 0, (vertices.len() * std::mem::size_of::<f32>()) as isize, vertices.as_ptr() as _);
+        }
+    }
+
+    pub fn reset_render_quad(&mut self) {
+        let vertices: &[f32] = &[
+            // positions
+            -1.0, 1.0,
+            1.0, 1.0,
+            1.0, -1.0,
+            -1.0, -1.0,
+        ];
+
+        self.set_render_quad(vertices);
     }
 }
