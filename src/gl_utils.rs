@@ -83,6 +83,23 @@ pub fn link_shader_program(shaders: &[u32]) -> Result<u32, String> {
     }
 }
 
+pub fn create_buffer_f32(data: &[f32], usage: gl::types::GLenum) -> Result<u32, String> {
+    let mut buffer = 0;
+    let data_size = (data.len() * std::mem::size_of::<f32>()) as _;
+    let data_ptr = data.as_ptr() as _;
+    unsafe {
+        gl::GenBuffers(1, &mut buffer);
+        gl::BindBuffer(gl::ARRAY_BUFFER, buffer);
+        gl::BufferData(
+            gl::ARRAY_BUFFER,
+            data_size,
+            data_ptr,
+            usage,
+        );
+    }
+
+    Ok(buffer)
+}
 
 pub extern "system"
 fn standard_debug_callback(
