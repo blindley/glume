@@ -4,6 +4,8 @@ use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::WindowBuilder;
 use glutin::ContextBuilder;
 
+type WindowedContext = glutin::WindowedContext<glutin::PossiblyCurrent>;
+
 use crate::keys::VirtualKeyCode;
 pub use gl;
 
@@ -13,22 +15,23 @@ pub struct WindowSettings {
     pub gl_version: (u8, u8),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ProcessEventStatus {
+    pub exit: bool,
+}
+
 pub struct WindowController<'a> {
-    exit: bool,
-    windowed_context: &'a glutin::WindowedContext<glutin::PossiblyCurrent>,
+    status: ProcessEventStatus,
+    windowed_context: &'a WindowedContext,
 }
 
 impl WindowController<'_> {
-    pub fn get_proc_address(&self, s: &str) -> *const std::ffi::c_void {
-        self.windowed_context.get_proc_address(s) as *const _
-    }
-
     pub fn set_title(&self, title: &str) {
         self.windowed_context.window().set_title(title);
     }
 
     pub fn close(&mut self) {
-        self.exit = true;
+        self.status.exit = true;
     }
 
     pub fn request_redraw(&self) {
@@ -86,16 +89,16 @@ impl Window {
 
         let exit = {
             let mut wc = WindowController {
-                exit: false,
+                status: ProcessEventStatus { exit: false },
                 windowed_context: &self.windowed_context,
             };
 
             if let Err(e) = event_handler(&mut wc, Event::WindowInitialized) {
                 eprintln!("Error: {}", e);
-                wc.exit = true;
+                wc.status.exit = true;
             }
 
-            wc.exit
+            wc.status.exit
         };
 
         if exit {
@@ -104,60 +107,68 @@ impl Window {
 
         self.event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Wait;
-            let mut wc = WindowController {
-                exit: false,
-                windowed_context: &self.windowed_context,
-            };
 
-            use glutin::event::Event as Ev;
-            use glutin::event::WindowEvent as WinEv;
-            use glutin::event::ElementState;
-
-            let result = match event {
-                Ev::LoopDestroyed => Ok(()),
-                Ev::WindowEvent { event, .. } => match event {
-                    WinEv::Resized(physical_size) => {
-                        self.windowed_context.resize(physical_size);
-                        event_handler(&mut wc, Event::Resized(physical_size.into()))
+            match process_event(&self.windowed_context, event, &mut event_handler) {
+                Ok(status) => {
+                    if status.exit {
+                        *control_flow = ControlFlow::Exit;
                     }
-
-                    WinEv::CloseRequested => {
-                        wc.exit = true;
-                        event_handler(&mut wc, Event::CloseRequested)
-                    }
-
-                    WinEv::KeyboardInput { input, .. } => {
-                        if let Some(vk) = input.virtual_keycode {
-                            match input.state {
-                                ElementState::Pressed => event_handler(&mut wc, Event::KeyPressed(vk)),
-                                ElementState::Released => event_handler(&mut wc, Event::KeyReleased(vk)),
-                            }
-                        } else {
-                            Ok(())
-                        }
-                    },
-                    _ => Ok(()),
                 },
-
-                Ev::RedrawRequested(_) => {
-                    event_handler(&mut wc, Event::RedrawRequested)
-                        .and_then(|_| {
-                            self.windowed_context.swap_buffers()?;
-                            Ok(())
-                        })
-                },
-
-                _ => Ok(()),
-            };
-
-            if let Err(e) = result {
-                eprintln!("Error: {}", e);
-                wc.exit = true;
-            }
-
-            if wc.exit {
-                *control_flow = ControlFlow::Exit;
+                Err(e) => {
+                    eprintln!("Error: {}", e);
+                    *control_flow = ControlFlow::Exit;
+                }
             }
         });
     }
+}
+
+fn process_event<F>(windowed_context: &WindowedContext, event: glutin::event::Event<()>, event_handler: &mut F)
+    -> Result<ProcessEventStatus, Box<dyn std::error::Error>>
+where
+    F: FnMut(&mut WindowController, Event) -> Result<(), Box<dyn std::error::Error>>
+{
+    let mut wc = WindowController {
+        status: ProcessEventStatus { exit: false },
+        windowed_context: windowed_context,
+    };
+
+    use glutin::event::Event as Ev;
+    use glutin::event::WindowEvent as WinEv;
+    use glutin::event::ElementState;
+
+    match event {
+        Ev::LoopDestroyed => (),
+        Ev::WindowEvent { event, .. } => match event {
+            WinEv::Resized(physical_size) => {
+                windowed_context.resize(physical_size);
+                event_handler(&mut wc, Event::Resized(physical_size.into()))?;
+            }
+
+            WinEv::CloseRequested => {
+                wc.status.exit = true;
+                event_handler(&mut wc, Event::CloseRequested)?;
+            }
+
+            WinEv::KeyboardInput { input, .. } => {
+                if let Some(vk) = input.virtual_keycode {
+                    match input.state {
+                        ElementState::Pressed => event_handler(&mut wc, Event::KeyPressed(vk))?,
+                        ElementState::Released => event_handler(&mut wc, Event::KeyReleased(vk))?,
+                    }
+                }
+            },
+
+            _ => ()
+        },
+
+        Ev::RedrawRequested(_) => {
+            event_handler(&mut wc, Event::RedrawRequested)?;
+            windowed_context.swap_buffers()?;
+        },
+
+        _ => ()
+    }
+
+    Ok(wc.status)
 }
