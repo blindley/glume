@@ -9,10 +9,17 @@ type WindowedContext = glutin::WindowedContext<glutin::PossiblyCurrent>;
 use crate::keys::VirtualKeyCode;
 pub use gl;
 
-pub struct WindowSettings {
+#[derive(Debug, Clone)]
+pub struct WindowConfiguration {
     pub title: String,
     pub size: (u32, u32),
     pub gl_version: (u8, u8),
+}
+
+impl WindowConfiguration {
+    pub fn build_window(&self) -> Window {
+        Window::new(self.clone())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,7 +32,14 @@ pub struct WindowController<'a> {
     windowed_context: &'a WindowedContext,
 }
 
-impl WindowController<'_> {
+impl<'a> WindowController<'a> {
+    fn new(windowed_context: &'a WindowedContext) -> Self {
+        Self {
+            status: ProcessEventStatus { exit: false },
+            windowed_context,
+        }
+    }
+
     pub fn set_title(&self, title: &str) {
         self.windowed_context.window().set_title(title);
     }
@@ -54,7 +68,7 @@ pub struct Window {
 }
 
 impl Window {
-    pub fn new(window_settings: WindowSettings) -> Self {
+    fn new(window_settings: WindowConfiguration) -> Self {
         let el = EventLoop::new();
         let wb = WindowBuilder::new();
         let wb = wb.with_title(window_settings.title);
@@ -88,10 +102,7 @@ impl Window {
         let mut event_handler = event_handler;
 
         let exit = {
-            let mut wc = WindowController {
-                status: ProcessEventStatus { exit: false },
-                windowed_context: &self.windowed_context,
-            };
+            let mut wc = WindowController::new(&self.windowed_context);
 
             if let Err(e) = event_handler(&mut wc, Event::WindowInitialized) {
                 eprintln!("Error: {}", e);
@@ -128,10 +139,7 @@ fn process_event<F>(windowed_context: &WindowedContext, event: glutin::event::Ev
 where
     F: FnMut(&mut WindowController, Event) -> Result<(), Box<dyn std::error::Error>>
 {
-    let mut wc = WindowController {
-        status: ProcessEventStatus { exit: false },
-        windowed_context: windowed_context,
-    };
+    let mut wc = WindowController::new(windowed_context);
 
     use glutin::event::Event as Ev;
     use glutin::event::WindowEvent as WinEv;
