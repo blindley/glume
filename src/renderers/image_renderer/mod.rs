@@ -1,5 +1,3 @@
-
-use std::rc::Rc;
 use crate::gl_utils::{compile_shader, link_shader_program, create_buffer_f32};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -16,16 +14,16 @@ pub struct ImageRef<'a> {
 }
 
 pub struct Texture {
-    texture: u32,
+    texture_id: u32,
     size: (u32, u32),
 }
 
 impl Texture {
     pub fn new(image: ImageRef) -> Self {
-        let mut texture = 0;
+        let mut texture_id = 0;
         unsafe {
-            gl::GenTextures(1, &mut texture);
-            gl::BindTexture(gl::TEXTURE_2D, texture);
+            gl::GenTextures(1, &mut texture_id);
+            gl::BindTexture(gl::TEXTURE_2D, texture_id);
 
             let internal_format = match image.format {
                 PixelFormat::RGB => gl::RGB,
@@ -51,7 +49,7 @@ impl Texture {
         }
 
         Self {
-            texture,
+            texture_id,
             size: image.size,
         }
     }
@@ -64,7 +62,7 @@ impl Texture {
 impl Drop for Texture {
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteTextures(1, &self.texture);
+            gl::DeleteTextures(1, &self.texture_id);
         }
     }
 }
@@ -73,21 +71,11 @@ pub struct ImageRenderer {
     program: u32,
     vao: u32,
     vbo: u32,
-    texture: Option<Rc<Texture>>,
 }
 
 
 impl ImageRenderer {
-    pub fn new() -> Self {
-        Self {
-            program: 0,
-            vao: 0,
-            vbo: 0,
-            texture: None,
-        }
-    }
-
-    pub fn init(&mut self) -> Result<(), String> {
+    pub fn new() -> Result<Self, String> {
         let vcode = include_str!("shaders/vertex_shader.glsl");
         let fcode = include_str!("shaders/fragment_shader.glsl");
 
@@ -132,28 +120,24 @@ impl ImageRenderer {
             gl::EnableVertexAttribArray(1);
         }
 
-        self.program = program;
-        self.vao = vao;
-        self.vbo = vbo;
-
-        Ok(())
+        Ok(Self {
+            program,
+            vao,
+            vbo,
+        })
     }
 
-    pub fn render(&self) {
-        if let Some(texture) = self.texture.as_ref() {
-            let texture = texture.texture;
-            
-            unsafe {
-                gl::UseProgram(self.program);
-                gl::BindTexture(gl::TEXTURE_2D, texture);
-                gl::BindVertexArray(self.vao);
-                gl::DrawArrays(gl::TRIANGLE_FAN, 0, 4);
-            }
+    pub unsafe fn render_raw_texture(&self, texture_id: u32) {
+        gl::UseProgram(self.program);
+        gl::BindTexture(gl::TEXTURE_2D, texture_id);
+        gl::BindVertexArray(self.vao);
+        gl::DrawArrays(gl::TRIANGLE_FAN, 0, 4);
+    }
+
+    pub fn render(&self, texture: &Texture) {
+        unsafe {
+            self.render_raw_texture(texture.texture_id);
         }
-    }
-
-    pub fn set_texture(&mut self, texture: Option<Rc<Texture>>) {
-        self.texture = texture;
     }
 
     pub fn set_render_quad(&mut self, vertices: &[f32]) {

@@ -6,8 +6,7 @@ use glutin::ContextBuilder;
 
 type WindowedContext = glutin::WindowedContext<glutin::PossiblyCurrent>;
 
-use crate::keys::VirtualKeyCode;
-pub use gl;
+pub use glutin::event::VirtualKeyCode;
 
 #[derive(Debug, Clone)]
 pub struct WindowConfiguration {
@@ -54,7 +53,6 @@ impl<'a> WindowController<'a> {
 }
 
 pub enum Event {
-    WindowInitialized,
     CloseRequested,
     Resized((u32, u32)),
     RedrawRequested,
@@ -100,21 +98,6 @@ impl Window {
         F: 'static + FnMut(&mut WindowController, Event) -> Result<(), Box<dyn std::error::Error>>
     {
         let mut event_handler = event_handler;
-
-        let exit = {
-            let mut wc = WindowController::new(&self.windowed_context);
-
-            if let Err(e) = event_handler(&mut wc, Event::WindowInitialized) {
-                eprintln!("Error: {}", e);
-                wc.status.exit = true;
-            }
-
-            wc.status.exit
-        };
-
-        if exit {
-            std::process::exit(0);
-        }
 
         self.event_loop.run(move |event, _, control_flow| {
             *control_flow = ControlFlow::Wait;
