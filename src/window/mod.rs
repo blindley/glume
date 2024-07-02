@@ -8,6 +8,7 @@ use glutin::ContextBuilder;
 type WindowedContext = glutin::WindowedContext<glutin::PossiblyCurrent>;
 
 pub use glutin::event::VirtualKeyCode;
+pub use glutin::event::MouseButton;
 
 #[derive(Debug, Clone)]
 pub struct WindowConfiguration {
@@ -57,12 +58,17 @@ impl<'a> WindowController<'a> {
         self.windata.tick_duration = duration;
         self.windata.next_tick = std::time::Instant::now() + duration;
     }
+
+    pub fn get_modifiers(&self) -> ModifierState {
+        self.windata.modifiers
+    }
 }
 
 struct WinData {
     windowed_context: WindowedContext,
     tick_duration: std::time::Duration,
     next_tick: std::time::Instant,
+    modifiers: ModifierState,
 }
 
 pub struct Window {
@@ -93,10 +99,18 @@ impl Window {
 
         let tick_duration = std::time::Duration::from_secs(1);
 
+        let modifiers = ModifierState {
+            shift: false,
+            ctrl: false,
+            alt: false,
+            super_: false,
+        };
+
         let windata = WinData {
             windowed_context,
             tick_duration,
             next_tick: std::time::Instant::now() + tick_duration,
+            modifiers,
         };
 
         Self {
@@ -191,27 +205,46 @@ where
 
             WinEv::KeyboardInput { input, .. } => {
                 if let Some(vk) = input.virtual_keycode {
-                    let state = match input.state {
-                        ElementState::Pressed => KeyState::Pressed,
-                        ElementState::Released => KeyState::Released,
-                    };
-
-                    #[allow(deprecated)]
-                    let modifiers = ModifierState {
-                        shift: input.modifiers.shift(),
-                        ctrl: input.modifiers.ctrl(),
-                        alt: input.modifiers.alt(),
-                        super_: input.modifiers.logo(),
-                    };
-
-                    let key_event = KeyEvent {
-                        key: vk,
-                        state,
-                        modifiers,
-                    };
-
-                    event_handler(&mut wc, Event::KeyEvent(key_event))?;
+                    match input.state {
+                        ElementState::Pressed => event_handler(&mut wc, Event::KeyPressed(vk))?,
+                        ElementState::Released => event_handler(&mut wc, Event::KeyReleased(vk))?,
+                    }
                 }
+            },
+
+            WinEv::MouseInput { state, button, .. } => {
+                match state {
+                    ElementState::Pressed =>
+                        event_handler(&mut wc, Event::MouseButtonPressed(button))?,
+                    ElementState::Released =>
+                        event_handler(&mut wc, Event::MouseButtonReleased(button))?,
+                };
+            },
+
+            WinEv::CursorEntered { .. } => {
+                event_handler(&mut wc, Event::CursorEntered)?;
+            },
+
+            WinEv::CursorLeft { .. } => {
+                event_handler(&mut wc, Event::CursorLeft)?;
+            },
+
+            WinEv::CursorMoved { position, .. } => {
+                let position = (position.x as f32, position.y as f32);
+                event_handler(&mut wc, Event::CursorMoved(position))?;
+            },
+
+            WinEv::ModifiersChanged(modifiers) => {
+                #[allow(deprecated)]
+                let modifiers = ModifierState {
+                    shift: modifiers.shift(),
+                    ctrl: modifiers.ctrl(),
+                    alt: modifiers.alt(),
+                    super_: modifiers.logo(),
+                };
+
+                wc.windata.modifiers = modifiers;
+                event_handler(&mut wc, Event::ModifiersChanged(modifiers))?;
             },
 
             _ => ()

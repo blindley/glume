@@ -1,4 +1,4 @@
-use super::VirtualKeyCode;
+use super::{VirtualKeyCode, MouseButton};
 
 #[derive(Debug, Clone)]
 pub enum Event {
@@ -6,14 +6,15 @@ pub enum Event {
     CloseRequested,
     Resized((u32, u32)),
     RedrawRequested,
-    KeyEvent(KeyEvent),
+    KeyPressed(VirtualKeyCode),
+    KeyReleased(VirtualKeyCode),
+    MouseButtonPressed(MouseButton),
+    MouseButtonReleased(MouseButton),
     Tick(TickEvent),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum KeyState {
-    Pressed,
-    Released,
+    CursorEntered,
+    CursorLeft,
+    CursorMoved((f32, f32)),
+    ModifiersChanged(ModifierState),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,13 +23,6 @@ pub struct ModifierState {
     pub ctrl: bool,
     pub alt: bool,
     pub super_: bool,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct KeyEvent {
-    pub key: VirtualKeyCode,
-    pub state: KeyState,
-    pub modifiers: ModifierState,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

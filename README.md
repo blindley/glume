@@ -41,13 +41,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
 
-            Event::KeyEvent(key_event) => {
-                use glume::window::{VirtualKeyCode as Vk, KeyState};
-                if key_event.state == KeyState::Pressed {
-                    match key_event.key {
-                        Vk::Escape => wc.close(),
-                        _ => (),
-                    }
+            Event::KeyPressed(key) => {
+                use glume::window::VirtualKeyCode as Vk;
+                match key {
+                    Vk::Escape => wc.close(),
+                    _ => (),
                 }
             }
 
@@ -103,17 +101,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 app.render();
             }
 
-            Event::KeyEvent(key_event) => {
-                use glume::window::{VirtualKeyCode as Vk, KeyState};
-                if key_event.state == KeyState::Pressed {
-                    match key_event.key {
-                        Vk::Escape => wc.close(),
-                        Vk::Space => {
-                            app.state_counter = (app.state_counter + 1) % 4;
-                            wc.request_redraw();
-                        }
-                        _ => (),
+            Event::KeyPressed(key) => {
+                use glume::window::VirtualKeyCode as Vk;
+                match key {
+                    Vk::Escape => wc.close(),
+                    Vk::Space => {
+                        app.state_counter = (app.state_counter + 1) % 4;
+                        wc.request_redraw();
                     }
+                    _ => (),
                 }
             }
 
