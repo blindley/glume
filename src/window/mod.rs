@@ -247,12 +247,50 @@ where
                 event_handler(&mut wc, Event::ModifiersChanged(modifiers))?;
             },
 
+            WinEv::MouseWheel { delta, .. } => {
+                let delta = delta.into();
+                event_handler(&mut wc, Event::MouseWheel(delta))?;
+            },
+
+            WinEv::Focused(focused) => {
+                event_handler(&mut wc, Event::Focused(focused))?;
+            },
+
+            WinEv::Moved(position) => {
+                let position = (position.x, position.y);
+                event_handler(&mut wc, Event::Moved(position))?;
+            },
+
+            WinEv::DroppedFile(path) => {
+                event_handler(&mut wc, Event::DroppedFile(path))?;
+            },
+
+            WinEv::HoveredFile(path) => {
+                event_handler(&mut wc, Event::HoveredFile(path))?;
+            },
+
+            WinEv::HoveredFileCancelled => {
+                event_handler(&mut wc, Event::HoveredFileCancelled)?;
+            },
+
+            WinEv::ReceivedCharacter(c) => {
+                event_handler(&mut wc, Event::ReceivedCharacter(c))?;
+            },
+
             _ => ()
         },
 
         Ev::RedrawRequested(_) => {
             event_handler(&mut wc, Event::RedrawRequested)?;
             wc.windata.windowed_context.swap_buffers()?;
+        },
+
+        Ev::Suspended => {
+            event_handler(&mut wc, Event::Suspended)?;
+        },
+
+        Ev::Resumed => {
+            event_handler(&mut wc, Event::Resumed)?;
         },
 
         _ => ()
