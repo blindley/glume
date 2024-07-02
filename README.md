@@ -4,7 +4,7 @@ A simple to use all-in-one OpenGL application framework.
 
 ## Barebones Example
 
-```rust
+```rust no_run
 // the gl crate is exported publicly
 use glume::gl;
 
@@ -41,11 +41,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
 
-            Event::KeyPressed(key) => {
-                use glume::window::VirtualKeyCode as Vk;
-                match key {
-                    Vk::Escape => wc.close(),
-                    _ => (),
+            Event::KeyEvent(key_event) => {
+                use glume::window::{VirtualKeyCode as Vk, KeyState};
+                if key_event.state == KeyState::Pressed {
+                    match key_event.key {
+                        Vk::Escape => wc.close(),
+                        _ => (),
+                    }
                 }
             }
 
@@ -59,7 +61,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Example with persistent state
 
-```rust
+```rust no_run
 use glume::gl;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -101,15 +103,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 app.render();
             }
 
-            Event::KeyPressed(key) => {
-                use glume::window::VirtualKeyCode as Vk;
-                match key {
-                    Vk::Escape => wc.close(),
-                    Vk::Space => {
-                        app.state_counter = (app.state_counter + 1) % 4;
-                        wc.request_redraw();
+            Event::KeyEvent(key_event) => {
+                use glume::window::{VirtualKeyCode as Vk, KeyState};
+                if key_event.state == KeyState::Pressed {
+                    match key_event.key {
+                        Vk::Escape => wc.close(),
+                        Vk::Space => {
+                            app.state_counter = (app.state_counter + 1) % 4;
+                            wc.request_redraw();
+                        }
+                        _ => (),
                     }
-                    _ => (),
                 }
             }
 
