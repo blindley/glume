@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     window.run(|wc, event| {
         use glume::window::Event;
         match event {
-            Event::Resized((width, height)) => {
+            Event::Resized(width, height) => {
                 unsafe {
                     gl::Viewport(0, 0, width as i32, height as i32);
                 }
@@ -86,7 +86,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     window.run(move |wc, event| {
         use glume::window::Event;
         match event {
-            Event::Resized((width, height)) => {
+            Event::Resized(width, height) => {
                 unsafe {
                     gl::Viewport(0, 0, width as i32, height as i32);
                 }
