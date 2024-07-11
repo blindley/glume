@@ -9,6 +9,7 @@ pub struct SystemTextRenderer {
     character_vertices: HashMap<char, Vec<f32>>,
 }
 
+#[derive(Debug, Clone)]
 pub struct TextLine {
     pub text: String,
     pub position: (f32, f32),
