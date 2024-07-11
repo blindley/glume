@@ -1,4 +1,8 @@
 
+use gl::types::GLenum;
+
+type Error = Box<dyn std::error::Error>;
+
 fn shader_source(shader: u32, src: &str) {
     let src = std::ffi::CString::new(src).unwrap();
     let src_ptr = src.as_ptr();
@@ -20,10 +24,10 @@ fn shader_type_as_str(ty: u32) -> Option<&'static str> {
     }
 }
 
-pub fn compile_shader(src: &str, ty: u32) -> Result<u32, String> {
+pub fn compile_shader(src: &str, ty: u32) -> Result<u32, Error> {
     let ty_str = shader_type_as_str(ty);
     if ty_str.is_none() {
-        return Err("Invalid shader type".to_string());
+        return Err("Invalid shader type".into());
     }
 
     let ty_str = ty_str.unwrap();
@@ -45,14 +49,14 @@ pub fn compile_shader(src: &str, ty: u32) -> Result<u32, String> {
             let msg = format!("Failed to compile {} shader: {}", ty_str, log);
 
             gl::DeleteShader(shader);
-            Err(msg)
+            Err(msg.into())
         } else {
             Ok(shader)
         }
     }
 }
 
-pub fn link_shader_program(shaders: &[u32]) -> Result<u32, String> {
+pub fn link_shader_program(shaders: &[u32]) -> Result<u32, Error> {
     unsafe {
         let program = gl::CreateProgram();
         for &shader in shaders {
@@ -76,14 +80,14 @@ pub fn link_shader_program(shaders: &[u32]) -> Result<u32, String> {
             let msg = format!("Failed to link shader program: {}", log);
 
             gl::DeleteProgram(program);
-            Err(msg)
+            Err(msg.into())
         } else {
             Ok(program)
         }
     }
 }
 
-pub fn create_buffer_f32(data: &[f32], usage: gl::types::GLenum) -> Result<u32, String> {
+pub fn create_buffer_f32(data: &[f32], usage: GLenum) -> Result<u32, Error> {
     let mut buffer = 0;
     let data_size = (data.len() * std::mem::size_of::<f32>()) as _;
     let data_ptr = data.as_ptr() as _;
@@ -99,6 +103,37 @@ pub fn create_buffer_f32(data: &[f32], usage: gl::types::GLenum) -> Result<u32, 
     }
 
     Ok(buffer)
+}
+
+pub fn create_texture(format: GLenum, size: (u32, u32), data: &[u8])
+    -> Result<u32, Error>
+{
+    let mut texture = 0;
+    unsafe {
+        gl::GenTextures(1, &mut texture);
+        gl::BindTexture(gl::TEXTURE_2D, texture);
+        gl::TexImage2D(
+            gl::TEXTURE_2D,
+            0,
+            format as i32,
+            size.0 as i32,
+            size.1 as i32,
+            0,
+            format,
+            gl::UNSIGNED_BYTE,
+            data.as_ptr() as _,
+        );
+    }
+
+    Ok(texture)
+}
+
+pub fn create_texture_rgb(size: (u32, u32), data: &[u8]) -> Result<u32, Error> {
+    create_texture(gl::RGB, size, data)
+}
+
+pub fn create_texture_rgba(size: (u32, u32), data: &[u8]) -> Result<u32, Error> {
+    create_texture(gl::RGBA, size, data)
 }
 
 pub extern "system"

@@ -446,10 +446,11 @@ dependencies = [
 
 [[package]]
 name = "glume"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "gl",
  "glutin",
+ "stb_image",
 ]
 
 [[package]]
@@ -1025,6 +1026,16 @@ dependencies = [
  "wayland-client",
  "wayland-cursor",
  "wayland-protocols",
+]
+
+[[package]]
+name = "stb_image"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfdaa89eb7dd3362e4abb16c4a8acf04786755882b38ff00714f2f1de0f4fcd3"
+dependencies = [
+ "cc",
+ "libc",
 ]
 
 [[package]]

@@ -5,6 +5,7 @@ use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::WindowBuilder;
 use glutin::ContextBuilder;
 
+type Error = Box<dyn std::error::Error>;
 type WindowedContext = glutin::WindowedContext<glutin::PossiblyCurrent>;
 
 pub use glutin::event::VirtualKeyCode;
@@ -122,7 +123,7 @@ impl Window {
     
     pub fn run<F>(mut self, event_handler: F) -> !
     where
-        F: 'static + FnMut(&mut WindowController, Event) -> Result<(), Box<dyn std::error::Error>>
+        F: 'static + FnMut(&mut WindowController, Event) -> Result<(), Error>
     {
         let mut event_handler = event_handler;
 
@@ -145,9 +146,9 @@ impl Window {
 }
 
 fn process_event<F>(windata: &mut WinData, event: glutin::event::Event<()>, event_handler: &mut F)
-    -> Result<ProcessEventStatus, Box<dyn std::error::Error>>
+    -> Result<ProcessEventStatus, Error>
 where
-    F: FnMut(&mut WindowController, Event) -> Result<(), Box<dyn std::error::Error>>
+    F: FnMut(&mut WindowController, Event) -> Result<(), Error>
 {
     let mut wc = WindowController::new(windata);
 
@@ -195,7 +196,8 @@ where
         Ev::WindowEvent { event, .. } => match event {
             WinEv::Resized(physical_size) => {
                 wc.windata.windowed_context.resize(physical_size);
-                event_handler(&mut wc, Event::Resized(physical_size.into()))?;
+                let (w, h) = physical_size.into();
+                event_handler(&mut wc, Event::Resized(w, h))?;
             }
 
             WinEv::CloseRequested => {
@@ -230,8 +232,8 @@ where
             },
 
             WinEv::CursorMoved { position, .. } => {
-                let position = (position.x as f32, position.y as f32);
-                event_handler(&mut wc, Event::CursorMoved(position))?;
+                let (x, y) = (position.x as f32, position.y as f32);
+                event_handler(&mut wc, Event::CursorMoved(x, y))?;
             },
 
             WinEv::ModifiersChanged(modifiers) => {
@@ -257,8 +259,8 @@ where
             },
 
             WinEv::Moved(position) => {
-                let position = (position.x, position.y);
-                event_handler(&mut wc, Event::Moved(position))?;
+                let (x, y) = (position.x, position.y);
+                event_handler(&mut wc, Event::Moved(x, y))?;
             },
 
             WinEv::DroppedFile(path) => {

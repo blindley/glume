@@ -1,46 +1,20 @@
 use crate::gl_utils::{compile_shader, link_shader_program, create_buffer_f32};
+use crate::image::ImageRef;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PixelFormat {
-    RGB,
-    RGBA,
-}
+type Error = Box<dyn std::error::Error>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ImageRef<'a> {
-    pub size: (u32, u32),
-    pub data: &'a [u8],
-    pub format: PixelFormat,
-}
-
-pub struct Texture {
+/// A texture configured for display in a window, rather than on a 3D model.
+pub struct ImageTexture {
     texture_id: u32,
     size: (u32, u32),
 }
 
-impl Texture {
+impl ImageTexture {
     pub fn new(image: ImageRef) -> Self {
-        let mut texture_id = 0;
+        let texture_id = image.create_texture().unwrap();
+
         unsafe {
-            gl::GenTextures(1, &mut texture_id);
             gl::BindTexture(gl::TEXTURE_2D, texture_id);
-
-            let internal_format = match image.format {
-                PixelFormat::RGB => gl::RGB,
-                PixelFormat::RGBA => gl::RGBA,
-            };
-
-            gl::TexImage2D(
-                gl::TEXTURE_2D,
-                0,
-                internal_format as i32,
-                image.size.0 as i32,
-                image.size.1 as i32,
-                0,
-                internal_format,
-                gl::UNSIGNED_BYTE,
-                image.data.as_ptr() as _,
-            );
 
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
             gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
@@ -50,7 +24,7 @@ impl Texture {
 
         Self {
             texture_id,
-            size: image.size,
+            size: image.size(),
         }
     }
 
@@ -59,7 +33,7 @@ impl Texture {
     }
 }
 
-impl Drop for Texture {
+impl Drop for ImageTexture {
     fn drop(&mut self) {
         unsafe {
             gl::DeleteTextures(1, &self.texture_id);
@@ -75,7 +49,7 @@ pub struct ImageRenderer {
 
 
 impl ImageRenderer {
-    pub fn new() -> Result<Self, String> {
+    pub fn new() -> Result<Self, Error> {
         let vcode = include_str!("shaders/vertex_shader.glsl");
         let fcode = include_str!("shaders/fragment_shader.glsl");
 
@@ -134,7 +108,7 @@ impl ImageRenderer {
         gl::DrawArrays(gl::TRIANGLE_FAN, 0, 4);
     }
 
-    pub fn render(&self, texture: &Texture) {
+    pub fn render(&self, texture: &ImageTexture) {
         unsafe {
             self.render_raw_texture(texture.texture_id);
         }
