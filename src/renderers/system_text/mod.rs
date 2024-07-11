@@ -6,10 +6,6 @@ type Error = Box<dyn std::error::Error>;
 
 pub struct SystemTextRenderer {
     program: u32,
-    vao: u32,
-    buffer: u32,
-    num_indices: usize,
-
     character_vertices: HashMap<char, Vec<f32>>,
 }
 
@@ -19,34 +15,14 @@ pub struct TextLine {
     pub char_size: (f32, f32),
 }
 
-impl SystemTextRenderer {
-    pub fn new() -> Self {
-        Self {
-            program: 0,
-            vao: 0,
-            buffer: 0,
-            num_indices: 0,
-            character_vertices: HashMap::new(),
-        }
-    }
+pub struct SystemText {
+    vao: u32,
+    buffer: u32,
+    num_indices: usize,
+}
 
-    pub fn init(&mut self) -> Result<(), Error> {
-        self.program = create_program()?;
-        self.character_vertices = create_character_vertices();
-        (self.vao, self.buffer) = create_vertex_array()?;
-
-        Ok(())
-    }
-
-    pub fn render(&self) {
-        unsafe {
-            gl::UseProgram(self.program);
-            gl::BindVertexArray(self.vao);
-            gl::DrawArrays(gl::LINES, 0, self.num_indices as i32);
-        }
-    }
-
-    pub fn set_text(&mut self, text: &[TextLine]) {
+impl SystemText {
+    pub fn new(renderer: &SystemTextRenderer, text: &[TextLine]) -> Result<Self, Error> {
         let char_scale = (0.8, 0.7);
         unsafe {
             let mut vertices = Vec::new();
@@ -54,7 +30,7 @@ impl SystemTextRenderer {
                 let char_scale = (char_scale.0 * t.char_size.0, char_scale.1 * t.char_size.1);
                 let mut char_start = t.position;
                 for c in t.text.chars() {
-                    if let Some(v) = self.character_vertices.get(&c) {
+                    if let Some(v) = renderer.character_vertices.get(&c) {
                         for i in 0..v.len() / 2 {
                             let index = i * 2;
                             let vx = char_start.0 + v[index] * char_scale.0;
@@ -72,14 +48,59 @@ impl SystemTextRenderer {
                 }
             }
 
-            self.num_indices = vertices.len();
+            let num_indices = vertices.len();
+
+            let (vao, buffer) = create_vertex_array()?;
 
             gl::NamedBufferData(
-                self.buffer,
+                buffer,
                 (vertices.len() * std::mem::size_of::<f32>()) as isize,
                 vertices.as_ptr() as *const _,
                 gl::STATIC_DRAW,
             );
+
+            Ok(Self {
+                vao,
+                buffer,
+                num_indices,
+            })
+        }
+    }
+}
+
+impl Drop for SystemText {
+    fn drop(&mut self) {
+        unsafe {
+            gl::DeleteBuffers(1, &self.buffer);
+            gl::DeleteVertexArrays(1, &self.vao);
+        }
+    }
+}
+
+impl SystemTextRenderer {
+    pub fn new() -> Result<Self, Error> {
+        let program = create_program()?;
+        let character_vertices = create_character_vertices();
+
+        Ok(Self {
+            program,
+            character_vertices,
+        })
+    }
+
+    pub fn render(&self, text: &SystemText) {
+        unsafe {
+            gl::UseProgram(self.program);
+            gl::BindVertexArray(text.vao);
+            gl::DrawArrays(gl::LINES, 0, text.num_indices as i32);
+        }
+    }
+}
+
+impl Drop for SystemTextRenderer {
+    fn drop(&mut self) {
+        unsafe {
+            gl::DeleteProgram(self.program);
         }
     }
 }

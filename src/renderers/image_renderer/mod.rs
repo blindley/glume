@@ -137,3 +137,13 @@ impl ImageRenderer {
         self.set_render_quad(vertices);
     }
 }
+
+impl Drop for ImageRenderer {
+    fn drop(&mut self) {
+        unsafe {
+            gl::DeleteProgram(self.program);
+            gl::DeleteVertexArrays(1, &self.vao);
+            gl::DeleteBuffers(1, &self.vbo);
+        }
+    }
+}
