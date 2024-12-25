@@ -60,6 +60,12 @@ impl PixelArray {
     }
 }
 
+impl From<Image> for PixelArray {
+    fn from(image: Image) -> PixelArray {
+        image.pixel_array
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct ImageRef<'a> {
     size: (u32, u32),
