@@ -1,6 +1,8 @@
 use crate::gl_utils::{compile_shader, link_shader_program, create_buffer_f32};
 use crate::image::ImageRef;
 
+use crate::renderers::{Renderer, IntRect};
+
 type Error = Box<dyn std::error::Error>;
 
 /// A texture configured for display in a window, rather than on a 3D model.
@@ -42,13 +44,57 @@ impl Drop for ImageTexture {
 }
 
 pub struct ImageRenderer {
+    renderer: _ImageRenderer,
+    viewport_rect: IntRect,
+    texture: Option<ImageTexture>,
+}
+
+impl ImageRenderer {
+    pub fn new(viewport_rect: IntRect) -> Result<Self, Error> {
+        let renderer = _ImageRenderer::new()?;
+
+        Ok(Self {
+            renderer,
+            viewport_rect,
+            texture: None,
+        })
+    }
+
+    pub fn set_render_quad(&mut self, vertices: &[f32]) {
+        self.renderer.set_render_quad(vertices);
+    }
+
+    pub fn reset_render_quad(&mut self) {
+        self.renderer.reset_render_quad();
+    }
+
+    pub fn replace_texture(&mut self, texture: ImageTexture) -> Option<ImageTexture> {
+        let old_texture = self.texture.take();
+        self.texture = Some(texture);
+        old_texture
+    }
+}
+
+impl Renderer for ImageRenderer {
+    fn set_viewport(&mut self, viewport_rect: IntRect) {
+        self.viewport_rect = viewport_rect;
+    }
+
+    fn render(&self) {
+        if let Some(ref texture) = self.texture {
+            self.viewport_rect.gl_viewport();
+            self.renderer.render(texture);
+        }
+    }
+}
+
+struct _ImageRenderer {
     program: u32,
     vao: u32,
     vbo: u32,
 }
 
-
-impl ImageRenderer {
+impl _ImageRenderer {
     pub fn new() -> Result<Self, Error> {
         let vcode = include_str!("shaders/vertex_shader.glsl");
         let fcode = include_str!("shaders/fragment_shader.glsl");
@@ -138,7 +184,7 @@ impl ImageRenderer {
     }
 }
 
-impl Drop for ImageRenderer {
+impl Drop for _ImageRenderer {
     fn drop(&mut self) {
         unsafe {
             gl::DeleteProgram(self.program);

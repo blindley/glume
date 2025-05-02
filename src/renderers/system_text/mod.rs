@@ -2,21 +2,25 @@ use std::collections::HashMap;
 
 include!(concat!(env!("OUT_DIR"), "/system_text_font.rs"));
 
+use crate::renderers::{Renderer, IntRect};
+
 type Error = Box<dyn std::error::Error>;
 
 pub struct SystemTextRenderer {
+    viewport_rect: IntRect,
     program: u32,
     character_vertices: HashMap<char, Vec<f32>>,
+    text: Option<SystemText>,
 }
 
 #[derive(Debug, Clone)]
-pub struct TextLine {
+struct TextLine {
     pub text: String,
     pub position: (f32, f32),
     pub char_size: (f32, f32),
 }
 
-pub struct SystemText {
+struct SystemText {
     vao: u32,
     buffer: u32,
     num_indices: usize,
@@ -79,21 +83,63 @@ impl Drop for SystemText {
 }
 
 impl SystemTextRenderer {
-    pub fn new() -> Result<Self, Error> {
+    pub fn new(viewport_rect: IntRect) -> Result<Self, Error> {
         let program = create_program()?;
         let character_vertices = create_character_vertices();
 
+        
         Ok(Self {
+            viewport_rect,
             program,
             character_vertices,
+            text: None,
         })
     }
 
-    pub fn render(&self, text: &SystemText) {
-        unsafe {
-            gl::UseProgram(self.program);
-            gl::BindVertexArray(text.vao);
-            gl::DrawArrays(gl::LINES, 0, text.num_indices as i32);
+    pub fn set_text(&mut self, text: &str) {
+        let mut text_lines = Vec::new();
+        let mut offset_y = 0.0;
+        for line in text.lines() {
+            let text_line = TextLine {
+                text: line.to_string(),
+                position: (0.0, offset_y),
+                char_size: (0.1, 0.1),
+            };
+            offset_y -= text_line.char_size.1;
+            text_lines.push(text_line);
+        }
+
+        let system_text = self.create_system_text(&text_lines).unwrap();
+        self.replace_text(system_text);
+    }
+
+    fn replace_text(&mut self, text: SystemText) -> Option<SystemText>{
+        let old_text = self.text.take();
+        self.text = Some(text);
+        old_text
+    }
+
+    fn create_system_text(
+        &self,
+        text: &[TextLine],
+    ) -> Result<SystemText, Error> {
+        SystemText::new(self, text)
+    }
+}
+
+impl Renderer for SystemTextRenderer {
+    fn set_viewport(&mut self, _viewport_rect: IntRect) {
+        self.viewport_rect = _viewport_rect;
+    }
+
+    fn render(&self) {
+        if let Some(ref text) = self.text {
+            self.viewport_rect.gl_viewport();
+            unsafe {
+                gl::UseProgram(self.program);
+                gl::BindVertexArray(text.vao);
+                gl::DrawArrays(gl::LINES, 0, text.num_indices as i32);
+            }
         }
     }
 }

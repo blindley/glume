@@ -36,6 +36,20 @@ impl PixelArrayRef<'_> {
             PixelArrayRef::RGBA(data) => PixelArray::RGBA(data.to_vec()),
         }
     }
+
+    pub fn get_pixel(&self, index: usize) -> [u8; 4] {
+        match self {
+            PixelArrayRef::RGB(data) => {
+                let i = index * 3;
+                [data[i], data[i + 1], data[i + 2], 255]
+            }
+
+            PixelArrayRef::RGBA(data) => {
+                let i = index * 4;
+                [data[i], data[i + 1], data[i + 2], data[i + 3]]
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -56,6 +70,20 @@ impl PixelArray {
         match self {
             PixelArray::RGB(data) => PixelArrayRef::RGB(data),
             PixelArray::RGBA(data) => PixelArrayRef::RGBA(data),
+        }
+    }
+
+    pub fn get_pixel(&self, index: usize) -> [u8; 4] {
+        match self {
+            PixelArray::RGB(data) => {
+                let i = index * 3;
+                [data[i], data[i + 1], data[i + 2], 255]
+            }
+
+            PixelArray::RGBA(data) => {
+                let i = index * 4;
+                [data[i], data[i + 1], data[i + 2], data[i + 3]]
+            }
         }
     }
 }
@@ -96,6 +124,11 @@ impl<'a> ImageRef<'a> {
             PixelArrayRef::RGBA(data)
                 => create_texture_rgba(self.size, data),
         }
+    }
+
+    pub fn get_pixel(&self, x: usize, y: usize) -> [u8; 4] {
+        let index = y * self.size.0 as usize + x;
+        self.pixel_array.get_pixel(index)
     }
 }
 
@@ -156,6 +189,11 @@ impl Image {
 
     pub fn create_texture(&self) -> Result<u32, Error> {
         self.as_ref().create_texture()
+    }
+
+    pub fn get_pixel(&self, x: usize, y: usize) -> [u8; 4] {
+        let index = y * self.size.0 as usize + x;
+        self.pixel_array.get_pixel(index)
     }
 }
 
