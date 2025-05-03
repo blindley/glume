@@ -87,15 +87,21 @@ impl SystemTextRenderer {
         let program = create_program()?;
         let character_vertices = create_character_vertices();
 
-        
-        Ok(Self {
+        let mut self_ = Self {
             viewport_rect,
             program,
             character_vertices,
             text: None,
-        })
+        };
+
+        // reasonable default, if the user never sets it
+        self_.set_window_size([800, 600]);
+
+        Ok(self_)
     }
 
+    /// If you want to make sure the text has a consistent size, no matter the size of the viewport,
+    /// you can set the window size.
     pub fn set_window_size(&mut self, size: [i32; 2]) {
         unsafe {
             let loc = gl::GetUniformLocation(self.program, "windowSize\0".as_ptr() as *const i8);
