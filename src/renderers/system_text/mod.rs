@@ -96,6 +96,14 @@ impl SystemTextRenderer {
         })
     }
 
+    pub fn set_window_size(&mut self, size: [i32; 2]) {
+        unsafe {
+            let loc = gl::GetUniformLocation(self.program, "windowSize\0".as_ptr() as *const i8);
+            gl::UseProgram(self.program);
+            gl::Uniform2f(loc, size[0] as f32, size[1] as f32);
+        }
+    }
+
     pub fn set_text(&mut self, text: &str) {
         let mut text_lines = Vec::new();
         let mut offset_y = 0.0;
