@@ -312,3 +312,72 @@ impl Renderer for InsetRenderer {
         self.inside_renderer.render();
     }
 }
+
+pub struct FixedAspectRatioRenderer {
+    viewport_rect: IntRect,
+    aspect_ratio: f32,
+    renderer: Box<dyn Renderer>,
+}
+
+impl FixedAspectRatioRenderer {
+    pub fn new(viewport_rect: IntRect, aspect_ratio: f32, renderer: Box<dyn Renderer>) -> Self {
+
+        let mut self_ = Self {
+            viewport_rect,
+            aspect_ratio,
+            renderer,
+        };
+
+        self_.reset_subrenderer_viewports();
+
+        self_
+    }
+
+    fn reset_subrenderer_viewports(&mut self) {
+        let viewport_size = self.viewport_rect.size;
+        let new_width = (viewport_size[1] as f32 * self.aspect_ratio) as i32;
+        let new_height = (viewport_size[0] as f32 / self.aspect_ratio) as i32;
+
+        let new_size = if new_width < viewport_size[0] {
+            [new_width, viewport_size[1]]
+        } else {
+            [viewport_size[0], new_height]
+        };
+
+        let new_pos = [
+            self.viewport_rect.pos[0] + (viewport_size[0] - new_size[0]) / 2,
+            self.viewport_rect.pos[1] + (viewport_size[1] - new_size[1]) / 2,
+        ];
+
+        let new_viewport_rect = IntRect {
+            pos: new_pos,
+            size: new_size,
+        };
+
+        self.renderer.set_viewport(new_viewport_rect);
+    }
+
+    pub fn get_subrenderer(&self) -> &dyn Renderer {
+        self.renderer.as_ref()
+    }
+
+    pub fn get_subrenderer_mut(&mut self) -> &mut dyn Renderer {
+        self.renderer.as_mut()
+    }
+
+    pub fn set_aspect_ratio(&mut self, aspect_ratio: f32) {
+        self.aspect_ratio = aspect_ratio;
+        self.reset_subrenderer_viewports();
+    }
+}
+
+impl Renderer for FixedAspectRatioRenderer {
+    fn set_viewport(&mut self, viewport_rect: IntRect) {
+        self.viewport_rect = viewport_rect;
+        self.reset_subrenderer_viewports();
+    }
+
+    fn render(&self) {
+        self.renderer.render();
+    }
+}
