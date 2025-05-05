@@ -1,4 +1,4 @@
-A simple to use all-in-one OpenGL application framework.
+A simple to Windowing and OpenGL context creation framework.
 
 # Examples
 
@@ -20,9 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // after the window is created, we can call OpenGL functions, not before
     unsafe {
-        use glume::gl_utils::standard_debug_callback;
         gl::Enable(gl::DEBUG_OUTPUT);
-        gl::DebugMessageCallback(Some(standard_debug_callback), std::ptr::null());
     }
 
     window.run(|wc, event| {
@@ -60,8 +58,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## Example with persistent state
 
 ```rust no_run
-use glume::gl;
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // initial configuration for the window
     let window_config = glume::window::WindowConfiguration {
@@ -74,13 +70,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // after the window is created, we can call OpenGL functions, not before
     unsafe {
-        use glume::gl_utils::standard_debug_callback;
         gl::Enable(gl::DEBUG_OUTPUT);
-        gl::DebugMessageCallback(Some(standard_debug_callback), std::ptr::null());
     }
 
     // if you have persistent state, initialize it here, including OpenGL resources
-    let mut app = ExampleApp::new()?;
+    let mut app = ExampleApp::new();
+
+    println!("Press space to change the state, or escape to close the window.");
 
     // don't forget to move the app into the closure
     window.run(move |wc, event| {
@@ -127,15 +123,15 @@ struct ExampleApp {
 }
 
 impl ExampleApp {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let program = create_example_program()?;
-        let vao = create_example_vertex_array()?;
+    fn new() -> Self {
+        let program = create_example_program();
+        let vao = create_example_vertex_array();
 
-        Ok(Self {
+        Self {
             program,
             vao,
             state_counter: 0,
-        })
+        }
     }
 
     fn render(&self) {
@@ -147,7 +143,7 @@ impl ExampleApp {
     }
 }
 
-fn create_example_program() -> Result<u32, Box<dyn std::error::Error>> {
+fn create_example_program() -> u32 {
     let vcode = r#"
         #version 450 core
         layout (location=0) in vec2 position;
@@ -168,21 +164,35 @@ fn create_example_program() -> Result<u32, Box<dyn std::error::Error>> {
         }
     "#;
 
-    let vshader = glume::gl_utils::compile_shader(vcode, gl::VERTEX_SHADER)?;
-    let fshader = glume::gl_utils::compile_shader(fcode, gl::FRAGMENT_SHADER)?;
-    let shaders = &[vshader, fshader];
-
-    let program = glume::gl_utils::link_shader_program(shaders)?;
+    let vshader = compile_shader(vcode, gl::VERTEX_SHADER);
+    let fshader = compile_shader(fcode, gl::FRAGMENT_SHADER);
 
     unsafe {
+        let program = gl::CreateProgram();
+        gl::AttachShader(program, vshader);
+        gl::AttachShader(program, fshader);
+        gl::LinkProgram(program);
+        gl::DetachShader(program, vshader);
+        gl::DetachShader(program, fshader);
         gl::DeleteShader(vshader);
         gl::DeleteShader(fshader);
-    }
 
-    Ok(program)
+        program
+    }
 }
 
-fn create_example_vertex_array() -> Result<u32, Box<dyn std::error::Error>> {
+fn compile_shader(source: &str, shader_type: u32) -> u32 {
+    let shader = unsafe { gl::CreateShader(shader_type) };
+    let c_str = std::ffi::CString::new(source).unwrap();
+    unsafe {
+        gl::ShaderSource(shader, 1, &c_str.as_ptr(), std::ptr::null());
+        gl::CompileShader(shader);
+    }
+
+    shader
+}
+
+fn create_example_vertex_array() -> u32 {
     let vertices: &[f32] = &[
         // positions
         -0.5, 0.0,
@@ -201,7 +211,18 @@ fn create_example_vertex_array() -> Result<u32, Box<dyn std::error::Error>> {
         0.0, 1.0, 1.0,
     ];
 
-    let vbo = glume::gl_utils::create_buffer_f32(vertices, gl::STATIC_DRAW)?;
+    let mut vbo = 0;
+    unsafe {
+        gl::GenBuffers(1, &mut vbo);
+        let size = (vertices.len() * std::mem::size_of::<f32>()) as isize;
+        let ptr = vertices.as_ptr() as *const _;
+        gl::NamedBufferData(
+            vbo,
+            size,
+            ptr,
+            gl::STATIC_DRAW,
+        );
+    }
 
     let mut vao = 0;
     unsafe {
@@ -221,6 +242,6 @@ fn create_example_vertex_array() -> Result<u32, Box<dyn std::error::Error>> {
         gl::EnableVertexAttribArray(1);
     }
 
-    Ok(vao)
+    vao
 }
 ```
