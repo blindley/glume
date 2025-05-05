@@ -446,7 +446,7 @@ dependencies = [
 
 [[package]]
 name = "glume"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "gl",
  "glutin",
