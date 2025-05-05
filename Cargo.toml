@@ -1,10 +1,10 @@
 [package]
 name = "glume"
-version = "0.7.0"
+version = "0.7.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 keywords = ["opengl", "graphics", "gamedev"]
-description = "A simple to use all-in-one OpenGL application framework."
+description = "A simple Windowing and OpenGL context creation framework."
 repository = "https://github.com/blindley/glume"
 readme = "README.md"
 

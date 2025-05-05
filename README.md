@@ -1,4 +1,4 @@
-A simple to Windowing and OpenGL context creation framework.
+A simple Windowing and OpenGL context creation framework.
 
 # Examples
 
