@@ -58,6 +58,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ## Example with persistent state
 
 ```rust no_run
+use glume::gl;
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // initial configuration for the window
     let window_config = glume::window::WindowConfiguration {
@@ -193,27 +195,20 @@ fn compile_shader(source: &str, shader_type: u32) -> u32 {
 }
 
 fn create_example_vertex_array() -> u32 {
+    #[rustfmt::skip]
     let vertices: &[f32] = &[
-        // positions
-        -0.5, 0.0,
-        0.0, 0.5,
-        0.5, 0.0,
-        0.0, -0.5,
-        -0.5, 0.0,
-        0.0, 0.5,
-
-        // colors
-        1.0, 1.0, 0.0,
-        0.0, 1.0, 1.0,
-        1.0, 0.0, 1.0,
-        1.0, 1.0, 1.0,
-        1.0, 1.0, 0.0,
-        0.0, 1.0, 1.0,
+        // positions    colors
+        -0.5,  0.0,     1.0, 1.0, 0.0,
+         0.0,  0.5,     0.0, 1.0, 1.0,
+         0.5,  0.0,     1.0, 0.0, 1.0,
+         0.0, -0.5,     1.0, 1.0, 1.0,
+        -0.5,  0.0,     1.0, 1.0, 0.0,
+         0.0,  0.5,     0.0, 1.0, 1.0,
     ];
 
     let mut vbo = 0;
     unsafe {
-        gl::GenBuffers(1, &mut vbo);
+        gl::CreateBuffers(1, &mut vbo);
         let size = (vertices.len() * std::mem::size_of::<f32>()) as isize;
         let ptr = vertices.as_ptr() as *const _;
         gl::NamedBufferData(
@@ -226,20 +221,16 @@ fn create_example_vertex_array() -> u32 {
 
     let mut vao = 0;
     unsafe {
-        gl::GenVertexArrays(1, &mut vao);
-        gl::BindVertexArray(vao);
+        gl::CreateVertexArrays(1, &mut vao);
+        let stride = 5 * std::mem::size_of::<f32>() as i32;
 
-        gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
+        let mut offset = 0;
+        gl::VertexArrayVertexBuffer(vao, 0, vbo, offset, stride);
+        gl::EnableVertexArrayAttrib(vao, 0);
 
-        let stride = 0;
-
-        let offset = 0 as *const _;
-        gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, stride, offset);
-        gl::EnableVertexAttribArray(0);
-
-        let offset = (12 * std::mem::size_of::<f32>()) as *const _;
-        gl::VertexAttribPointer(1, 3, gl::FLOAT, gl::FALSE, stride, offset);
-        gl::EnableVertexAttribArray(1);
+        offset += 2 * std::mem::size_of::<f32>() as isize;
+        gl::VertexArrayVertexBuffer(vao, 1, vbo, offset, stride);
+        gl::EnableVertexArrayAttrib(vao, 1);
     }
 
     vao
